@@ -14,15 +14,14 @@ tap:
       ootbSupplyChain: tanzu/tanzu-supply-chain
       testing: tanzu/pipeline
   artifactory:
-     url: https://artifactory.tanzu-seal.io/artifactory/libs-release-local
+     url: https://artifactory.YOUR DOMAIN/artifactory/libs-release-local
   domains:
-    gitlab: gitlab.tanzu-seal.io
-    main: apps.tanzu.corp
-    tapGui: tap-gui.apps.tanzu.corp
-    learningCenter: learningcenter.apps.tanzu.corp
-    knative: apps.tanzu.corp
+    gitlab: gitlab.YOUR DOMAIN
+    main: tap.YOUR DOMAIN
+    learningCenter: learningcenter.tap.YOUR DOMAIN
+    knative: apps.tap.YOUR DOMAIN
   grype:
-    dbUrl: https://tanzu-seal-61e9b6e0-a95d-42c2-9344-75d5585572b5.s3.us-east-2.amazonaws.com/grype/listing.json
+    dbUrl: https://YOUR S3 BUCKET URL/grype/listing.json
 #@ end
 ---
 apiVersion: v1
