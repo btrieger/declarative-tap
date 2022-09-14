@@ -72,7 +72,7 @@ kctrl package installed list -n tap-install
 Enjoy!
 
 ## Post Deployment
-If you want to view image scan results in tap-gui, you need to create a service account (done with [this folder](additional/enable-cve-in-tap-gui/)) and provide the service account token and ca.crt from app-tls-secret. See the value `metadata_svc_account_token` and `metadata_ca_cert` in [tap-install-secrets.yml.tpl](gitops/tap-install-secrets.yml.tpl) for where do to this.
+If you want to view image scan results in tap-gui, you need to update tap-values-secrets.yml and provide the service account read only token and ca.crt from app-tls-secret both of which are located in the metadata-store namespace. See the value `metadata_svc_account_token` and `metadata_ca_cert` in [tap-install-secrets.yml.tpl](gitops/tap-install-secrets.yml.tpl) for where do to this.
 
 Now you can deploy the sample workload in additional/workloads after updating the gitlab url.
 ## Contribute
