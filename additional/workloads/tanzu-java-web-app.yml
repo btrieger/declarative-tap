@@ -1,0 +1,19 @@
+---
+apiVersion: carto.run/v1alpha1
+kind: Workload
+metadata:
+  labels:
+    app.kubernetes.io/part-of: tanzu-java-web-app
+    apps.tanzu.vmware.com/workload-type: web
+  name: tanzu-java-web-app-no-testing
+  namespace: dev-tap
+spec:
+  params:
+    - name: annotations
+      value:
+        autoscaling.knative.dev/minScale: "1"
+  source:
+    git:
+      ref:
+        branch: master
+      url: https://gitlab.tanzu-seal.io/tap/tanzu-java-web-app

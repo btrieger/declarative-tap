@@ -1,0 +1,47 @@
+#@ load("@ytt:data", "data")
+
+#! Deploy a scan policy into each dev namespace.
+#! Required for Grype scans to succed.
+#! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-getting-started-add-test-and-security.html#install-ootb-supply-chain-with-testing-and-scanning-5
+
+#@ if data.values.tap.devNamespaces and data.values.tap.devNamespaces != "":
+#@ for namespace in data.values.tap.devNamespaces:
+---
+apiVersion: scanning.apps.tanzu.vmware.com/v1beta1
+kind: ScanPolicy
+metadata:
+  name: scan-policy
+  namespace: #@ namespace
+spec:
+  regoFile: |
+    package main
+
+    # Accepted Values: "Critical", "High", "Medium", "Low", "Negligible", "UnknownSeverity"
+    notAllowedSeverities := ["Critical","UnknownSeverity","High"]
+    #Needed for tanzu-java-web-app
+    ignoreCves := ["CVE-2016-1000027"]
+
+    contains(array, elem) = true {
+      array[_] = elem
+    } else = false { true }
+
+    isSafe(match) {
+      fails := contains(notAllowedSeverities, match.ratings.rating[_])
+      not fails
+    }
+
+    isSafe(match) {
+      ignore := contains(ignoreCves, match.Id)
+      ignore
+    }
+
+    deny[msg] {
+      comp := input.bom.components.component[_]
+      vuln := comp.vulnerabilities.vulnerability[_]
+      ratings := vuln.ratings.rating[_]
+      not isSafe(vuln)
+      msg = sprintf("CVE %s %s %s", [comp.name, vuln.id, ratings])
+    }
+
+#@ end
+#@ end

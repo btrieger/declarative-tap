@@ -1,0 +1,27 @@
+#@data/values
+
+#@overlay/match-child-defaults missing_ok=True
+
+#! This file is used as a 'values' file for the manifests in
+#! this directory.
+---
+tap:
+
+  #! Name of k8s namespaces to set up for development.
+  #! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-set-up-namespaces.html
+  devNamespaces: 
+    - dev-tap
+  tap-gui:
+    gitlab:
+  domains:
+    gitlab: gitlab.tanzu-seal.io
+    main: tap.tanzu-seal.io
+    learningCenter: learningcenter.tap.tanzu-seal.io
+    knative: apps.tap.tanzu-seal.io
+  maven:
+    url: https://artificatory.tanzu-seal.io
+    credentials_secret_name: maven-creds
+    ca_cert_secret_name: custom-ca
+  ca_cert_data: |
+    test
+  metadata_ca_cert_data:

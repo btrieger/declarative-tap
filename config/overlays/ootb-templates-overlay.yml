@@ -1,0 +1,35 @@
+#@ load("@ytt:overlay", "overlay")
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ootb-templates-overlay-maven
+  namespace: tap-install
+stringData:
+        patch.yaml: |
+            #@ load("@ytt:overlay", "overlay")
+            #@ load("@ytt:data", "data")
+            #@ load("@ytt:yaml", "yaml")
+            #@ def source_pipelinerun():
+            kind: ClusterRunTemplate
+            metadata:
+              name: tekton-source-pipelinerun
+            #@ end
+            #@overlay/match by=overlay.subset(source_pipelinerun())
+            ---
+            spec:
+              template:
+                spec:
+                  #@overlay/match missing_ok=True
+                  workspaces:
+                  - name: maven-settings
+                    secret:
+                      secretName: maven-settings
+                  - name: source
+                    volumeClaimTemplate:
+                       spec:
+                        accessModes:
+                         - ReadWriteOnce
+                        resources:
+                         requests:
+                          storage: 1Gi

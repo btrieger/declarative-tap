@@ -1,0 +1,29 @@
+#@ load("@ytt:overlay", "overlay")
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tap-gui-overlay
+  namespace: tap-install
+stringData:
+  patch.yaml: |
+    #@ load("@ytt:overlay", "overlay")
+    #@overlay/match by=overlay.subset({"kind":"Deployment","metadata":{"name":"server"}})
+    ---
+    spec:
+      template:
+        spec:
+          containers:
+            #@overlay/match by=overlay.subset({"name": "backstage"}),expects="1+"
+            #@overlay/match-child-defaults missing_ok=True
+            - env:
+              - name: NODE_EXTRA_CA_CERTS
+                value: "/etc/tap-gui-certs/tap-gui-certs.crt"
+              volumeMounts:
+               - name: tap-gui-extra-certs
+                 mountPath: /etc/tap-gui-certs
+                 readOnly: true
+          volumes:
+          - name: tap-gui-extra-certs
+            secret:
+              secretName: tap-gui-extra-certs

@@ -1,0 +1,199 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:yaml", "yaml")
+
+#!
+#! This file is your 'tap-values.yaml'
+#!
+---
+#@ def config():
+profile: full
+ceip_policy_disclosed: true
+buildservice:
+  kp_default_repository: #@ "{}/{}".format(data.values.tap.registry.host, data.values.tap.registry.repositories.buildService)
+  kp_default_repository_username: #@ data.values.tap.credentials.registry.username
+  kp_default_repository_password: #@ data.values.tap.credentials.registry.password
+  exclude_dependencies: true
+
+#! valid options are 'basic', 'testing', and 'testing_scanning'
+supply_chain: testing_scanning
+ootb_supply_chain_basic:
+  registry:
+    server: #@ data.values.tap.registry.host
+    repository: #@ data.values.tap.registry.repositories.ootbSupplyChain
+  gitops:
+    ssh_secret: ""
+
+ootb_supply_chain_testing:
+  registry:
+    server: #@ data.values.tap.registry.host
+    repository: #@ data.values.tap.registry.repositories.ootbSupplyChain
+  gitops:
+    ssh_secret: custom-ca
+  maven:
+    repository:
+      url: #@ data.values.tap.maven.url
+      credentials_secret_name: #@ data.values.tap.maven.credentials_secret_name
+      ca_cert_secret_name: #@ data.values.tap.maven.ca_cert_secret_name
+
+ootb_supply_chain_testing_scanning:
+  registry:
+    server: #@ data.values.tap.registry.host
+    repository: #@ data.values.tap.registry.repositories.ootbSupplyChain
+  gitops:
+    ssh_secret: custom-ca 
+  maven:
+    repository:
+      url: #@ data.values.tap.maven.url
+      credentials_secret_name: #@ data.values.tap.maven.credentials_secret_name
+      ca_cert_secret_name: #@ data.values.tap.maven.ca_cert_secret_name
+
+learningcenter:
+  ingressDomain: #@ data.values.tap.domains.learningCenter
+appliveview:
+  tls:
+    namespace: "tap-install"
+    secretName: "tap-wildcard"
+tap_gui:
+  service_type: ClusterIP
+  ingressEnabled: "true"
+  ingressDomain: #@ data.values.tap.domains.main
+  tls:
+    namespace: "tap-install"
+    secretName: "tap-wildcard"
+  app_config:
+    kubernetes:
+     serviceLocatorMethod:
+       type: multiTenant
+     clusterLocatorMethods:
+     - type: config
+       clusters:
+       - url: #@ data.values.tap.credentials.k8s_url
+         name: host
+         authProvider: serviceAccount
+         serviceAccountToken: ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}
+         skipTLSVerify: false
+         caData: #@ data.values.tap.credentials.k8s_ca
+
+    #@ if "metadata_svc_account_token" in data.values.tap.credentials:
+    #! Set security metadata access for TAP GUI.
+    #! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-tap-gui-plugins-scc-tap-gui.html#enable-cve-scan-results-2
+    proxy:
+      /metadata-store:
+        target: https://metadata-store-app.metadata-store:8443/api/v1
+        changeOrigin: true
+        secure: true
+        ca: #@ data.values.tap.credentials.metadata_ca_cert
+        headers:
+          Authorization: #@ "Bearer {}".format(data.values.tap.credentials.metadata_svc_account_token)
+          X-Custom-Source: project-star
+    #@ end
+
+    app:
+      baseUrl: #@ "https://tap-gui.{}".format(data.values.tap.domains.main)
+    integrations:
+      gitlab:
+        - host: #@ data.values.tap.domains.gitlab
+          apiBaseUrl: #@ "https://gitlab.{}/api/v4/".format(data.values.tap.domains.main)
+    catalog:
+      locations:
+      #@ for catalog in data.values.tap.catalogs:
+      - type: url
+        target: #@ catalog
+      #@ end
+    backend:
+      baseUrl: #@ "https://tap-gui.{}".format(data.values.tap.domains.main)
+      cors:
+        baseUrl: #@ "https://tap-gui.{}".format(data.values.tap.domains.main)
+      #@ if "backstage" in data.values.tap.credentials and "database" in data.values.tap.credentials.backstage:
+      backend:
+        database:
+          client: #@ data.values.tap.credentials.backstage.database.client
+          connection:
+            host: #@ data.values.tap.credentials.backstage.database.host
+            port: #@ data.values.tap.credentials.backstage.database.port
+            user: #@ data.values.tap.credentials.backstage.database.username
+            password: #@ data.values.tap.credentials.backstage.database.password
+            ssl: {rejectUnauthorized: true}
+      #@ end
+    #@ if "okta" in data.values.tap.credentials and "clientId" in data.values.tap.credentials.okta and "clientSecret" in data.values.tap.credentials.okta:
+    auth:
+      allowGuestAccess: true
+      environment: development
+      providers:
+        okta:
+          development:
+            clientId:     #@ data.values.tap.credentials.okta.clientId
+            clientSecret: #@ data.values.tap.credentials.okta.clientSecret
+            audience:     #@ data.values.tap.credentials.okta.audience
+    #@ end
+
+metadata_store:
+  ns_for_export_app_cert: "*"
+  ingress_domain: #@ data.values.tap.domains.main
+  app_service_type: ClusterIP
+  ingress_enabled: "true"
+
+
+excluded_packages:
+  - grype.scanning.apps.tanzu.vmware.com
+
+accelerator:
+  tls:
+    namespace: "tap-install"
+    secretName: "tap-wildcard"
+  samples:
+    include: false
+  ingress:
+    include: true
+  domain: #@ data.values.tap.domains.main
+contour:
+  envoy:
+    service:
+      type: LoadBalancer
+      annotations:
+          service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+cnrs:
+  default_tls_secret: "tap-install/tap-wildcard"
+  domain_name: #@ data.values.tap.domains.knative
+shared:
+   ingress_domain: #@ data.values.tap.domains.main
+   ca_cert_data: #@ data.values.tap.ca_cert_data
+package_overlays:
+   - name: "tap-gui"
+     secrets:
+        - name: "tap-gui-ca-cert"
+        - name: "tap-gui-overlay"
+   - name: "ootb-templates"
+     secrets:
+        - name: "ootb-templates-overlay-maven"
+
+#@ end
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tap-values
+  namespace: #@ data.values.tap.namespace
+type: Opaque
+stringData:
+  values.yml: #@ yaml.encode(config())
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  name: tap
+  namespace: #@ data.values.tap.namespace
+  annotations:
+    kapp.k14s.io/change-group: tap
+    kapp.k14s.io/change-rule: "upsert after upserting tap-install/rbac"
+    kapp.k14s.io/change-rule.repo: "upsert after upserting tap-install/tap-repo"
+spec:
+  packageRef:
+    refName: tap.tanzu.vmware.com
+    versionSelection:
+      constraints: #@ str(data.values.tap.version)
+      prereleases: {}
+  serviceAccountName: tap-default-sa
+  values:
+  - secretRef:
+      name: tap-values

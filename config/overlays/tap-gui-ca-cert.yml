@@ -1,0 +1,21 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:yaml", "yaml")
+---
+#@ def secret():
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tap-gui-extra-certs
+  namespace: tap-gui
+stringData: 
+  tap-gui-certs.crt: #@ data.values.tap.ca_cert_data
+#@ end
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tap-gui-ca-cert
+  namespace: tap-install
+stringData:
+  ca-secret.yaml: #@ yaml.encode(secret())

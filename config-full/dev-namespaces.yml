@@ -1,0 +1,168 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:base64", "base64")
+#@ load("@ytt:json", "json")
+
+#!
+#! Create, and set up, developer k8s namespaces.
+#! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-set-up-namespaces.html
+#!
+
+#@ if data.values.tap.devNamespaces and data.values.tap.devNamespaces != "":
+#@ for namespace in data.values.tap.devNamespaces:
+---
+#@ def config():
+#@  return {
+#@    "auths": {
+#@      data.values.tap.registry.host: {
+#@        "username": data.values.tap.credentials.registry.username,
+#@        "password": data.values.tap.credentials.registry.password
+#@      }
+#@    }
+#@  }
+#@ end
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: #@ namespace
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-credentials
+  namespace: #@ namespace
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: #@ json.encode(config())
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tap-registry
+  namespace: #@ namespace
+  annotations:
+    secretgen.carvel.dev/image-pull-secret: ""
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: e30K
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: #@ namespace
+secrets:
+  - name: registry-credentials
+imagePullSecrets:
+  - name: registry-credentials
+  - name: tap-registry
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: default
+  namespace: #@ namespace
+rules:
+- apiGroups: [source.toolkit.fluxcd.io]
+  resources: [gitrepositories]
+  verbs: ['*']
+- apiGroups: [source.apps.tanzu.vmware.com]
+  resources: [imagerepositories]
+  verbs: ['*']
+- apiGroups: [carto.run]
+  resources: [deliverables, runnables]
+  verbs: ['*']
+- apiGroups: [kpack.io]
+  resources: [images]
+  verbs: ['*']
+- apiGroups: [conventions.apps.tanzu.vmware.com]
+  resources: [podintents]
+  verbs: ['*']
+- apiGroups: [""]
+  resources: ['configmaps']
+  verbs: ['*']
+- apiGroups: [""]
+  resources: ['pods']
+  verbs: ['list']
+- apiGroups: [tekton.dev]
+  resources: [taskruns, pipelineruns]
+  verbs: ['*']
+- apiGroups: [tekton.dev]
+  resources: [pipelines]
+  verbs: ['list']
+- apiGroups: [kappctrl.k14s.io]
+  resources: [apps]
+  verbs: ['*']
+- apiGroups: [serving.knative.dev]
+  resources: ['services']
+  verbs: ['*']
+- apiGroups: [servicebinding.io]
+  resources: ['servicebindings']
+  verbs: ['*']
+- apiGroups: [services.apps.tanzu.vmware.com]
+  resources: ['resourceclaims']
+  verbs: ['*']
+- apiGroups: [scanning.apps.tanzu.vmware.com]
+  resources: ['imagescans', 'sourcescans']
+  verbs: ['*']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default
+  namespace: #@ namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: default
+subjects:
+  - kind: ServiceAccount
+    name: default
+---
+#!
+#! Give the user full access to their namespace
+#!
+#! Start with the role...
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: #@ "{}-namespace-full-access".format(namespace)
+  namespace: #@ namespace
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["extensions"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["carto.run"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["serving.knative.dev"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["tekton.dev"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+#! Now the roleBinding
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: #@ "{}-namespace-rolebinding".format(namespace)
+  namespace: #@ namespace
+subjects:
+- kind: User
+  #! The username is expected to match the Namespace
+  name: #@ namespace
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: #@ "{}-namespace-full-access".format(namespace)
+  apiGroup: rbac.authorization.k8s.io
+
+#! end for...
+#@ end
+
+#! end if data.values.tap.devNamespaces...
+#@ end

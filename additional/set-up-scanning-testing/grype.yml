@@ -1,0 +1,121 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:yaml", "yaml")
+
+---
+#!
+#! Install the Grype package into each dev namespace.
+#! The Grype Package references a k8s secret to know where
+#! to put the scan templates, so we need to create that as well.
+#! An example of that secret looks like this:
+#!
+#! values.yaml: |
+#!   namespace: user-01
+#!   targetImagePullSecret: tap-registry
+#!
+
+
+#@ if data.values.tap.devNamespaces and data.values.tap.devNamespaces != "":
+#@ for namespace in data.values.tap.devNamespaces:
+---
+#@ def config():
+namespace: #@ namespace
+url: #@ data.values.tap.grype.dbUrl
+ca_cert_data: #@ data.values.tap.ca_cert_data
+targetImagePullSecret: tap-registry
+#@ end
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: #@ "patch-grype-{}".format(namespace)
+  namespace: tap-install
+stringData:
+  patch-data.yaml: |
+          #@ load("@ytt:overlay", "overlay")
+          #@data/values
+          #@overlay/match-child-defaults missing_ok=True
+          ---
+          url: https://test.com
+          ca_cert_data: |
+                    -----BEGIN CERTIFICATE-----
+                    MIIFXzCCA0egAwIBAgIJAJYm37SFocjlMA0GCSqGSIb3DQEB
+                    7NyEv1C1YdQCJV9NkiAV5aIRlImnrKVowhaTXoK33X+YkR0=
+                    -----END CERTIFICATE-----
+  patch.yaml: |
+          #@ load("@ytt:overlay", "overlay")
+          #@ load("@ytt:data", "data")
+          #@ load("@ytt:yaml", "yaml")
+          ---
+          apiVersion: v1
+          kind: Secret 
+          metadata:
+            name: custom-ca 
+            namespace: #@ data.values.namespace
+          stringData:
+            caFile: #@ data.values.ca_cert_data
+          ---
+          #@overlay/match by=overlay.subset({"kind": "ScanTemplate"}), expects="1+"
+          ---
+          spec:
+            template:
+              initContainers:
+                #@overlay/match by=overlay.subset({"name": "scan-plugin"})
+                 - name: scan-plugin
+                   #@overlay/match missing_ok=True
+                   env:
+                   #@overlay/append
+                    - name: GRYPE_CHECK_FOR_APP_UPDATE
+                      value: "false"
+                    - name: GRYPE_DB_AUTO_UPDATE
+                      value: "true"
+                    - name: GRYPE_DB_UPDATE_URL
+                      value: #@ data.values.url
+                   volumeMounts:
+                      #@overlay/append
+                      - name: ca-cert
+                        mountPath: /etc/ssl/certs/caFile
+                        subPath: caFile
+              volumes:
+              #@overlay/append
+              - name: ca-cert
+                secret:
+                  secretName: custom-ca 
+
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  annotations:
+    ext.packaging.carvel.dev/ytt-paths-from-secret-name.0: #@ "patch-grype-{}".format(namespace)
+    kapp.k14s.io/change-rule.scancontroller: upsert after upserting scancontroller
+    kapp.k14s.io/change-rule.serviceaccount: delete before deleting serviceaccount
+  name: #@ "grype-{}".format(namespace)
+  namespace: tap-install
+  finalizers:
+  - finalizers.packageinstall.packaging.carvel.dev/delete
+spec:
+  packageRef:
+    refName: grype.scanning.apps.tanzu.vmware.com
+    versionSelection:
+      constraints: "1.2.2"
+      prereleases: {}
+  serviceAccountName: tap-install-sa
+  values:
+  - secretRef:
+      name: #@ "grype-values-{}".format(namespace)
+---
+#! This is how we tell Grype where to put the scanTemplates and what imagePullSecret to use.
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+  name: #@ "grype-values-{}".format(namespace)
+  namespace: tap-install
+type: Opaque
+stringData:
+  values.yaml:  #@ yaml.encode(config())
+#! end for namespace...
+#@ end
+
+#! end if data.values.tap.....
+#@ end

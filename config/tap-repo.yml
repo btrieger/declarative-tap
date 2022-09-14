@@ -1,0 +1,15 @@
+#@ load("@ytt:data", "data")
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageRepository
+metadata:
+  name: tanzu-tap-repository
+  namespace: #@ data.values.tap.namespace
+  annotations:
+    kapp.k14s.io/change-group: tap-install/tap-repo
+spec:
+  fetch:
+    imgpkgBundle:
+      image: #@ "{}/tkg/tap/tap:{}".format(data.values.tap.registry.host, data.values.tap.version)
+      secretRef:
+        name: tap-registry

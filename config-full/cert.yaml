@@ -1,0 +1,56 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:base64", "base64")
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tap-wildcard
+  namespace: tap-install
+  annotations:
+      kapps.k14s.io/change-group: "tap-install/ca"
+      kapp.k14s.io/change-rule: "upsert after upserting tap"
+spec:
+  secretName: tap-wildcard
+  commonName: #@ "*.{}".format(data.values.tap.domains.main)
+  dnsNames:
+  - #@ "*.{}".format(data.values.tap.domains.main)
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: v1
+data:
+  tls.crt: #@ base64.encode(data.values.tap.ca_cert_data)
+  tls.key: #@ base64.encode(data.values.tap.credentials.ca_cert_key)
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: int-ca
+  namespace: cert-manager
+  annotations:
+      kapps.k14s.io/change-group: "tap-install/ca"
+      kapp.k14s.io/change-rule: "upsert after upserting tap"
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+  annotations:
+      kapps.k14s.io/change-group: "tap-install/ca"
+      kapp.k14s.io/change-rule: "upsert after upserting tap"
+spec:
+  ca:
+    secretName: int-ca
+---
+apiVersion: projectcontour.io/v1
+kind: TLSCertificateDelegation
+metadata:
+  name: tap-wildcard
+  namespace: tap-install
+  annotations:
+      kapp.k14s.io/change-rule: "upsert after upserting tap-install/ca"
+spec:
+  delegations:
+  - secretName: tap-wildcard
+    targetNamespaces: ["*"]
