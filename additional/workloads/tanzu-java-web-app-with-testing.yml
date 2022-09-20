@@ -1,4 +1,3 @@
----
 apiVersion: carto.run/v1alpha1
 kind: Workload
 metadata:
@@ -7,14 +6,18 @@ metadata:
     apps.tanzu.vmware.com/workload-type: web
     apps.tanzu.vmware.com/has-tests: "true"
   name: tanzu-java-web-app
-  namespace: dev-tap
 spec:
+  build:
+    env:
+    - name: BP_MAVEN_BUILD_ARGUMENTS
+      value: -Dmaven.test.skip=true --no-transfer-progress package
   params:
-    - name: annotations
-      value:
-        autoscaling.knative.dev/minScale: "1"
+  - name: buildServiceBindings
+    value:
+    - kind: Secret
+      name: maven-settings
   source:
     git:
       ref:
-        branch: master
+        branch: main
       url: https://gitlab.tanzu-seal.io/tap/tanzu-java-web-app

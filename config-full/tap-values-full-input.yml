@@ -6,7 +6,6 @@
 #! this directory.
 ---
 tap:
-
   #! Name of k8s namespaces to set up for development.
   #! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-set-up-namespaces.html
   devNamespaces: 
@@ -24,4 +23,3 @@ tap:
     ca_cert_secret_name: custom-ca
   ca_cert_data: |
     test
-  metadata_ca_cert_data:

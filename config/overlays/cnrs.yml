@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cnrs-overlay
+  namespace: tap-install
+stringData:
+  patch.yaml: |
+    #@ load("@ytt:overlay", "overlay")
+    #@overlay/match by=overlay.subset({"kind":"ConfigMap", "metadata":{"name":"config-network","namespace":"knative-serving"}}),expects="1+"
+    ---
+    data:
+      #@overlay/match missing_ok=True
+      auto-tls: Enabled
+    #@overlay/match by=overlay.subset({"kind":"ConfigMap", "metadata":{"name":"config-certmanager","namespace":"knative-serving"}}),expects="1+"
+    ---
+    data:
+      #@overlay/match missing_ok=True
+      issuerRef: |
+       kind: ClusterIssuer
+       name: ca-issuer

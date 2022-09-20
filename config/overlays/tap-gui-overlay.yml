@@ -1,4 +1,35 @@
 #@ load("@ytt:overlay", "overlay")
+#@ load("@ytt:yaml", "yaml")
+
+---
+#@ def clusterrolebinding():
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metadata-store-read-only
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: metadata-store-read-only
+subjects:
+- kind: ServiceAccount
+  name: tap-gui
+  namespace: tap-gui
+---
+#@ end
+---
+#@ def secretimport():
+---
+apiVersion: secretgen.carvel.dev/v1alpha1
+kind: SecretImport
+metadata:
+  name: app-tls-cert
+  namespace: tap-gui
+spec:
+  fromNamespace: metadata-store
+---
+#@ end
 ---
 apiVersion: v1
 kind: Secret
@@ -6,6 +37,8 @@ metadata:
   name: tap-gui-overlay
   namespace: tap-install
 stringData:
+  secretimport.yaml: #@ yaml.encode(secretimport())
+  clusterrole.yaml: #@ yaml.encode(clusterrolebinding())
   patch.yaml: |
     #@ load("@ytt:overlay", "overlay")
     #@overlay/match by=overlay.subset({"kind":"Deployment","metadata":{"name":"server"}})
@@ -16,14 +49,31 @@ stringData:
           containers:
             #@overlay/match by=overlay.subset({"name": "backstage"}),expects="1+"
             #@overlay/match-child-defaults missing_ok=True
-            - env:
+           - env:
               - name: NODE_EXTRA_CA_CERTS
                 value: "/etc/tap-gui-certs/tap-gui-certs.crt"
-              volumeMounts:
+             #@overlay/replace
+             args:
+              - -c
+              - |
+                export METADATA_CA_CERT="$(cat /etc/metadata/ca.crt)"
+                export KUBERNETES_SERVICE_ACCOUNT_TOKEN="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+                export KUBERNETES_CA_CERT="$(cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt | base64 -w 0)"
+                exec node packages/backend \
+                --config=app-config.yaml \
+                --config=/etc/app-config/app-config.yaml
+             #@overlay/match-child-defaults missing_ok=True
+             volumeMounts:
                - name: tap-gui-extra-certs
                  mountPath: /etc/tap-gui-certs
                  readOnly: true
+               - name: metadata-certs
+                 mountPath: /etc/metadata
+                 readOnly: true
           volumes:
+          - name: metadata-certs
+            secret:
+              secretName: app-tls-cert
           - name: tap-gui-extra-certs
             secret:
               secretName: tap-gui-extra-certs

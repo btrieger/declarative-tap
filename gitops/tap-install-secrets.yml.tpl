@@ -66,8 +66,6 @@ tap:
     #! Allow tap-gui to access the security metadata store.
     #! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-scst-store-create-service-account-access-token.html#ro-serv-accts
     #! Uncomment the below after you enable cve in tap-gui
-    #! metadata_svc_account_token: INSERT-TOKEN
-    metadata_ca_cert: test
 #@ end
 ---
 apiVersion: v1

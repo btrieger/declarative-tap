@@ -6,6 +6,7 @@ metadata:
   annotations:
     kapp.k14s.io/change-group: tap-install-gitops/app
     kapp.k14s.io/change-rule: "upsert after upserting tap-install-gitops/rbac"
+    kapp.k14s.io/change-rule.serviceaccount: delete before deleting serviceaccount
 spec:
   serviceAccountName: tap-install-gitops-sa
   fetch:
@@ -18,8 +19,34 @@ spec:
       - config
       - config-full
       - config/overlays
+      valuesFrom:
+      - configMapRef:
+          name: tap-install-gitops
+      - secretRef:
+          name: tap-install-gitops
+  deploy:
+  - kapp: {}
+
+---
+apiVersion: kappctrl.k14s.io/v1alpha1
+kind: App
+metadata:
+  name: tap-install-gitops-grype
+  namespace: tap-install-gitops
+  annotations:
+    kapp.k14s.io/change-group: tap-install-gitops/grype
+    kapp.k14s.io/change-rule: "upsert after upserting tap-install-gitops/app"
+    kapp.k14s.io/change-rule.serviceaccount: delete before deleting serviceaccount
+spec:
+  serviceAccountName: tap-install-gitops-sa
+  fetch:
+  - git:
+      url: https://gitlab.tanzu-seal.io/tap/declarative
+      ref: origin/main
+  template:
+  - ytt:
+      paths:
       - additional/set-up-scanning-testing
-      - additional/enable-cve-in-tap-gui
       valuesFrom:
       - configMapRef:
           name: tap-install-gitops

@@ -1,5 +1,6 @@
 #@ load("@ytt:data", "data")
 #@ load("@ytt:yaml", "yaml")
+#@ load("settings_xml.star", "settings_xml")
 
 ---
 #!
@@ -23,6 +24,281 @@ url: #@ data.values.tap.grype.dbUrl
 ca_cert_data: #@ data.values.tap.ca_cert_data
 targetImagePullSecret: tap-registry
 #@ end
+#@ def addons():
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: developer-defined-tekton-pipeline
+  namespace: #@ namespace
+  labels:
+    apps.tanzu.vmware.com/pipeline: test     #! (!) required
+spec:
+  params:
+    - name: source-url                       #! (!) required
+    - name: source-revision                  #! (!) required
+    - name: context-dir
+      type: string
+      default: springboot 
+  workspaces:
+    - name: source
+    - name: maven-settings
+  tasks:
+    - name: clone-sources
+      params:
+        - name: source-url
+          value: $(params.source-url)
+        - name: source-revision
+          value: $(params.source-revision)
+      workspaces:
+        - name: source
+          workspace: source
+      taskSpec:
+         params:
+          - name: source-url
+          - name: source-revision
+         workspaces:
+          - name: source
+         steps:
+          - name: clone
+            image: #@ "{}/{}/gradle".format(data.values.tap.registry.host, data.values.tap.registry.repositories.testing)
+            script: |-
+              CHECKOUT_DIR="$(workspaces.source.path)"
+              cd $CHECKOUT_DIR
+              wget -qO- $(params.source-url) | tar xvz
+    - name: build-java-test
+      params:
+        - name: MAVEN_CA_SECRET_KEY
+          value: "caFile"
+        - name: GOALS
+          value:
+            - '-B'
+            - test
+      runAfter:
+        - clone-sources
+      taskRef:
+        kind: Task
+        name: maven
+      workspaces:
+        - name: maven-settings
+          workspace: maven-settings
+        - name: source
+          workspace: source
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: maven
+  namespace: #@ namespace
+  labels:
+    app.kubernetes.io/version: "0.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/categories: Build Tools
+    tekton.dev/tags: build-tool
+    tekton.dev/platforms: "linux/amd64,linux/s390x,linux/ppc64le"
+spec:
+  description: >-
+    This Task can be used to run a Maven build.
+  workspaces:
+    - name: source
+      description: The workspace consisting of maven project.
+    - name: maven-settings
+      description: >-
+        The workspace consisting of the custom maven settings
+        provided by the user.
+  params:
+    - name: TRUSTSTORE_PASSWORD_SECRET
+      type: string
+      description: the name of the secret that contains truststore password
+      default: java-truststore-password
+    - name: TRUSTSTORE_PASSWORD_SECRET_KEY
+      type: string
+      description: the name of the key in the secret that contains truststore password
+      default: password
+    - name: MAVEN_CA_SECRET
+      type: string
+      description: the name of the secret that contains the ca for maven
+      default: custom-ca
+    - name: MAVEN_CA_SECRET_KEY
+      type: string
+      description: the name of the key in the secret that contains the ca for maven
+      default: ca.crt
+    - name: GOALS
+      description: maven goals to run
+      type: array
+      default:
+        - "test"
+    - name: MAVEN_MIRROR_URL
+      description: The Maven repository mirror url
+      type: string
+      default: ""
+    - name: SERVER_USER
+      description: The username for the server
+      type: string
+      default: ""
+    - name: SERVER_PASSWORD
+      description: The password for the server
+      type: string
+      default: ""
+    - name: PROXY_USER
+      description: The username for the proxy server
+      type: string
+      default: ""
+    - name: PROXY_PASSWORD
+      description: The password for the proxy server
+      type: string
+      default: ""
+    - name: PROXY_PORT
+      description: Port number for the proxy server
+      type: string
+      default: ""
+    - name: PROXY_HOST
+      description: Proxy server Host
+      type: string
+      default: ""
+    - name: PROXY_NON_PROXY_HOSTS
+      description: Non proxy server host
+      type: string
+      default: ""
+    - name: PROXY_PROTOCOL
+      description: Protocol for the proxy ie http or https
+      type: string
+      default: "http"
+    - name: CONTEXT_DIR
+      type: string
+      description: >-
+        The context directory within the repository for sources on
+        which we want to execute maven goals.
+      default: "."
+  steps:
+    - name: mvn-keystore
+      image:  #@ "{}/{}/gradle".format(data.values.tap.registry.host, data.values.tap.registry.repositories.testing)
+      volumeMounts:
+        - name: "maven-ca"
+          mountPath: /var/maven_ca
+          readOnly: true
+      env:
+       - name: TRUSTSTORE_PASSWORD
+         valueFrom:
+           secretKeyRef:
+              name: $(params.TRUSTSTORE_PASSWORD_SECRET)
+              key: $(params.TRUSTSTORE_PASSWORD_SECRET_KEY)
+      script: |
+           #!/usr/bin/env bash
+           [[ -f $(workspaces.source.path)/truststore.jks ]] && \
+           echo 'using existing $(workspaces.source.path)/truststore.jks' && exit 0
+
+           cd $(workspaces.source.path)
+           keytool -import -file /var/maven_ca/$(params.MAVEN_CA_SECRET_KEY) -no-prompt -keystore truststore.jks -storepass $TRUSTSTORE_PASSWORD
+    - name: mvn-settings
+      image: #@ "{}/{}/ubi-minimal:8.2".format(data.values.tap.registry.host, data.values.tap.registry.repositories.testing)
+      script: |
+        #!/usr/bin/env bash
+        [[ -f $(workspaces.maven-settings.path)/settings.xml ]] && \
+        echo 'using existing $(workspaces.maven-settings.path)/settings.xml' && exit 0
+
+        cat > $(workspaces.maven-settings.path)/settings.xml <<EOF
+        <settings>
+          <servers>
+            <!-- The servers added here are generated from environment variables. Don't change. -->
+            <!-- ### SERVER's USER INFO from ENV ### -->
+          </servers>
+          <mirrors>
+            <!-- The mirrors added here are generated from environment variables. Don't change. -->
+            <!-- ### mirrors from ENV ### -->
+          </mirrors>
+          <proxies>
+            <!-- The proxies added here are generated from environment variables. Don't change. -->
+            <!-- ### HTTP proxy from ENV ### -->
+          </proxies>
+        </settings>
+        EOF
+
+        xml=""
+        if [ -n "$(params.PROXY_HOST)" -a -n "$(params.PROXY_PORT)" ]; then
+          xml="<proxy>\
+            <id>genproxy</id>\
+            <active>true</active>\
+            <protocol>$(params.PROXY_PROTOCOL)</protocol>\
+            <host>$(params.PROXY_HOST)</host>\
+            <port>$(params.PROXY_PORT)</port>"
+          if [ -n "$(params.PROXY_USER)" -a -n "$(params.PROXY_PASSWORD)" ]; then
+            xml="$xml\
+                <username>$(params.PROXY_USER)</username>\
+                <password>$(params.PROXY_PASSWORD)</password>"
+          fi
+          if [ -n "$(params.PROXY_NON_PROXY_HOSTS)" ]; then
+            xml="$xml\
+                <nonProxyHosts>$(params.PROXY_NON_PROXY_HOSTS)</nonProxyHosts>"
+          fi
+          xml="$xml\
+              </proxy>"
+          sed -i "s|<!-- ### HTTP proxy from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
+        fi
+
+        if [ -n "$(params.SERVER_USER)" -a -n "$(params.SERVER_PASSWORD)" ]; then
+          xml="<server>\
+            <id>serverid</id>"
+          xml="$xml\
+                <username>$(params.SERVER_USER)</username>\
+                <password>$(params.SERVER_PASSWORD)</password>"
+          xml="$xml\
+              </server>"
+          sed -i "s|<!-- ### SERVER's USER INFO from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
+        fi
+
+        if [ -n "$(params.MAVEN_MIRROR_URL)" ]; then
+          xml="    <mirror>\
+            <id>mirror.default</id>\
+            <url>$(params.MAVEN_MIRROR_URL)</url>\
+            <mirrorOf>central</mirrorOf>\
+          </mirror>"
+          sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
+        fi
+
+    - name: mvn-goals
+      image: #@ "{}/{}/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641".format(data.values.tap.registry.host, data.values.tap.registry.repositories.testing)
+      workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
+      command: ["/usr/bin/mvn"]
+      env:
+      - name: TRUSTSTORE_PASSWORD
+        valueFrom:
+           secretKeyRef:
+              name: $(params.TRUSTSTORE_PASSWORD_SECRET)
+              key: $(params.TRUSTSTORE_PASSWORD_SECRET_KEY)
+      args:
+        - -s
+        - $(workspaces.maven-settings.path)/settings.xml
+        - -Djavax.net.ssl.trustStore=$(workspaces.source.path)/truststore.jks
+        - -Djavax.net.ssl.trustStorePassword=$(TRUSTSTORE_PASSWORD)
+        - "$(params.GOALS)"
+  volumes:
+    - name: "maven-ca"
+      secret:
+        secretName: "$(params.MAVEN_CA_SECRET)"
+        optional: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maven-settings 
+  namespace: #@ namespace
+type: service.binding/maven
+stringData:
+  type: maven
+  provider: sample
+  settings.xml: #@ settings_xml(data.values.tap.artifactory.url, data.values.tap.credentials.artifactory.password, data.values.tap.credentials.artifactory.username)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: java-truststore-password
+  namespace: #@ namespace
+type: Opaque
+stringData:
+  password: #@ data.values.tap.credentials.javatrust.password
+#@ end
 ---
 apiVersion: v1
 kind: Secret
@@ -30,6 +306,7 @@ metadata:
   name: #@ "patch-grype-{}".format(namespace)
   namespace: tap-install
 stringData:
+  patch-secret.yaml : #@ yaml.encode(addons())
   patch-data.yaml: |
           #@ load("@ytt:overlay", "overlay")
           #@data/values
@@ -87,7 +364,7 @@ kind: PackageInstall
 metadata:
   annotations:
     ext.packaging.carvel.dev/ytt-paths-from-secret-name.0: #@ "patch-grype-{}".format(namespace)
-    kapp.k14s.io/change-rule.scancontroller: upsert after upserting scancontroller
+    kapp.k14s.io/change-rule.scancontroller: upsert after upserting tap-install/scancontroller
     kapp.k14s.io/change-rule.serviceaccount: delete before deleting serviceaccount
   name: #@ "grype-{}".format(namespace)
   namespace: tap-install

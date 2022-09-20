@@ -3,18 +3,23 @@
 #@ def config():
 tap:
   #! Set Backstage catalogs to include by default.
+  version: "1.2.1"
+  tbs:
+    version: "1.6.0"
   catalogs:
   - https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
   devNamespaces: 
     - dev-tap
+  ca_cert_data: |
+     YOUR_CERT
   registry:
-    host: registry.tanzu.corp
+    host: harbor.tanzu-seal.io
     repositories:
-      buildService: tanzu/tanzu-build-service
-      ootbSupplyChain: tanzu/tanzu-supply-chain
-      testing: tanzu/pipeline
+      buildService: tkg/tbs
+      ootbSupplyChain: tkg/ootb
+      testing: tkg/pipeline
   artifactory:
-     url: https://artifactory.YOUR DOMAIN/artifactory/libs-release-local
+     url: https://artifactory.YOUR DOMAIN/artifactory/example-repo-local
   domains:
     gitlab: gitlab.YOUR DOMAIN
     main: tap.YOUR DOMAIN

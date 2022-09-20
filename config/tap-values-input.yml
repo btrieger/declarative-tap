@@ -6,12 +6,14 @@ tap:
   version: "1.2.0"
   namespace: tap-install
   catalogs: []
-
+  tbs:
+    version: "1.6.0"
   registry:
-    host: registry.tap.tanzu.corp
+    host: harbor.tanzu-seal.io
     repositories:
-      buildService: repo/build-service
-      ootbSupplyChain: repo/supply-chain
+      buildService: tkg/tbs
+      ootbSupplyChain: tkg/ootb
+      testing: tkg/pipeline
 
   domains:
     main: tap.tanzu.corp

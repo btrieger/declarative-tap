@@ -67,27 +67,21 @@ tap_gui:
      clusterLocatorMethods:
      - type: config
        clusters:
-       - url: #@ data.values.tap.credentials.k8s_url
+       - url: https://kubernetes.default.svc
          name: host
          authProvider: serviceAccount
          serviceAccountToken: ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}
          skipTLSVerify: false
-         caData: #@ data.values.tap.credentials.k8s_ca
-
-    #@ if "metadata_svc_account_token" in data.values.tap.credentials:
-    #! Set security metadata access for TAP GUI.
-    #! ref: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap/GUID-tap-gui-plugins-scc-tap-gui.html#enable-cve-scan-results-2
+         caData: ${KUBERNETES_CA_CERT}
     proxy:
       /metadata-store:
         target: https://metadata-store-app.metadata-store:8443/api/v1
         changeOrigin: true
         secure: true
-        ca: #@ data.values.tap.credentials.metadata_ca_cert
+        ca: ${METADATA_CA_CERT}
         headers:
-          Authorization: #@ "Bearer {}".format(data.values.tap.credentials.metadata_svc_account_token)
+          Authorization: "Bearer ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}"
           X-Custom-Source: project-star
-    #@ end
-
     app:
       baseUrl: #@ "https://tap-gui.{}".format(data.values.tap.domains.main)
     integrations:
@@ -163,9 +157,15 @@ package_overlays:
      secrets:
         - name: "tap-gui-ca-cert"
         - name: "tap-gui-overlay"
+   - name: "contour"
+     secrets:
+        - name: "cert-overlay"
    - name: "ootb-templates"
      secrets:
         - name: "ootb-templates-overlay-maven"
+   - name: "cnrs"
+    secrets:
+        - name: "cnrs-overlay"
 
 #@ end
 ---
@@ -187,6 +187,7 @@ metadata:
     kapp.k14s.io/change-group: tap
     kapp.k14s.io/change-rule: "upsert after upserting tap-install/rbac"
     kapp.k14s.io/change-rule.repo: "upsert after upserting tap-install/tap-repo"
+    kapp.k14s.io/change-rule.serviceaccount: delete before deleting serviceaccount
 spec:
   packageRef:
     refName: tap.tanzu.vmware.com
@@ -197,3 +198,21 @@ spec:
   values:
   - secretRef:
       name: tap-values
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  name: full-tbs-deps
+  namespace: #@ data.values.tap.namespace
+  annotations:
+    kapp.k14s.io/change-group: tbs
+    kapp.k14s.io/change-rule: "upsert after upserting tap"
+    kapp.k14s.io/change-rule.repo: "upsert after upserting tap-install/tbs-repo"
+    kapp.k14s.io/change-rule.serviceaccount: delete before deleting serviceaccount
+spec:
+  packageRef:
+    refName: full-tbs-deps.tanzu.vmware.com
+    versionSelection:
+      constraints: #@ str(data.values.tap.tbs.version)
+      prereleases: {}
+  serviceAccountName: tap-default-sa

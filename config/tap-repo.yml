@@ -13,3 +13,19 @@ spec:
       image: #@ "{}/tkg/tap/tap:{}".format(data.values.tap.registry.host, data.values.tap.version)
       secretRef:
         name: tap-registry
+---
+#@ load("@ytt:data", "data")
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageRepository
+metadata:
+  name: tanzu-tbs-repository
+  namespace: #@ data.values.tap.namespace
+  annotations:
+    kapp.k14s.io/change-group: tap-install/tbs-repo
+spec:
+  fetch:
+    imgpkgBundle:
+      image: #@ "{}/tkg/tap/tbs:{}".format(data.values.tap.registry.host, data.values.tap.tbs.version)
+      secretRef:
+        name: tap-registry
