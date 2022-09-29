@@ -164,7 +164,7 @@ package_overlays:
      secrets:
         - name: "ootb-templates-overlay-maven"
    - name: "cnrs"
-    secrets:
+     secrets:
         - name: "cnrs-overlay"
 
 #@ end
