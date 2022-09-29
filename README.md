@@ -13,14 +13,15 @@ while tracking any configuration updates with Git (easy rollbacks).
 
 This repo:
 - Deploys TAP (full profile)
+- Automatic installation of Tekton Pipelines and ScanPolicies to support the scanning_testing OOTB supply chain in all dev namespaces. See [here](additional/set-up-scanning-testing/). Including set up for maven in an airgapped environment by creating a settings xml service binding secret and java truststore with a private ca given to authenticate to artifactory with
+- Creates a self signed ca issuer using the provided ca key and cert values provided by the user
 - Creates a user-defined set of k8s namespaces (see [tap-values-full-input.yml](config-full/tap-values-full-input.yml) to define the namespaces.)
 - Sets up those namespaces for TAP development, including installation of a Grype scanPolicy and a Tekton Pipeline
-- [Optionally] Configures external-dns
-
-This repo also includes:
+- Enables auto tls on cnrs for all workloads
+- Auto integration of metadata store into tap-gui so that a read only access token does not need to be created after the fact.
+- Auto set up of tls to the kubernetes tap-gui is running on
+This repo includes:
 - [Sample workload](additional/workloads/) to deploy after you've deployed TAP.
-- Automatic installation of Tekton Pipelines and ScanPolicies to support the scanning_testing OOTB supply chain. See [here](additional/set-up-scanning-testing/).
-- Easy creation of the service account required to see CVE scan results in tap-gui. See [here](additional/enable-cve-in-tap-gui/).
 - Simple 'source-to-url' Supply chain to be applied afterward (since the default install deploys the scanning_testing supply chains). See [here](additional/cluster-supply-chains/).
 - Some APIs added to the catalog for easy demos. See [here](gitops/tap-install-config.yml.tpl) for how to add/remove your own.
 
