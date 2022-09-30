@@ -75,7 +75,7 @@ tap_gui:
          caData: ${KUBERNETES_CA_CERT}
     proxy:
       /metadata-store:
-        target: https://metadata-store-app.metadata-store:8443/api/v1
+        target: https://metadata-store-app.metadata-store.svc.cluster.local:8443/api/v1
         changeOrigin: true
         secure: true
         ca: ${METADATA_CA_CERT}
@@ -178,12 +178,39 @@ type: Opaque
 stringData:
   values.yml: #@ yaml.encode(config())
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tap-order-patch
+  namespace: #@ data.values.tap.namespace
+type: Opaque
+stringData:
+  order-patch.yaml:  |
+      #@ load("@ytt:overlay", "overlay")
+      #@overlay/match by=overlay.subset({"kind":"PackageInstall","metadata":{"name":"metadata-store"}})
+      ---
+      metadata:
+        #@overlay/match-child-defaults missing_ok=True
+        annotations:
+           kapp.k14s.io/change-group: "metadata-store"
+           kapp.k14s.io/change-rule: "upsert before upserting scancontroller"
+           kapp.k14s.io/change-rule.tap-gui: "upsert before upserting tap-gui"
+      --- 
+      #@overlay/match by=overlay.subset({"kind":"PackageInstall","metadata":{"name":"tap-gui"}})
+      ---
+      metadata:
+        #@overlay/match-child-defaults missing_ok=True
+        annotations:
+           kapp.k14s.io/change-group: "tap-gui"
+           kapp.k14s.io/change-rule: "upsert after upserting metadata-store"
+---
 apiVersion: packaging.carvel.dev/v1alpha1
 kind: PackageInstall
 metadata:
   name: tap
   namespace: #@ data.values.tap.namespace
   annotations:
+    ext.packaging.carvel.dev/ytt-paths-from-secret-name.0: "tap-order-patch"
     kapp.k14s.io/change-group: tap
     kapp.k14s.io/change-rule: "upsert after upserting tap-install/rbac"
     kapp.k14s.io/change-rule.repo: "upsert after upserting tap-install/tap-repo"

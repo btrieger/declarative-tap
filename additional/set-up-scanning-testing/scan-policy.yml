@@ -17,7 +17,7 @@ spec:
     package main
 
     # Accepted Values: "Critical", "High", "Medium", "Low", "Negligible", "UnknownSeverity"
-    notAllowedSeverities := ["Critical","UnknownSeverity","High"]
+    notAllowedSeverities := ["Critical","UnknownSeverity"]
     #Needed for tanzu-java-web-app
     ignoreCves := ["CVE-2016-1000027"]
 

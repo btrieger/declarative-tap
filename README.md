@@ -51,10 +51,10 @@ by creating `tap-install-secrets.yml`:
 
 
 ### Deploy 
-You are now ready to apply the GitOps configuration:
+You are now ready to apply the GitOps configuration. To do so change the path to your ca.crt:
 
 ```shell
-kapp deploy --wait-check-interval 15s -a tap-install-gitops -f <(ytt -f gitops)
+kapp deploy --wait-check-interval 15s -a tap-install-gitops -f <(ytt -f gitops -f /path/to/ca.rt)
 ```
 
 At this point, kapp-controller will monitor the Git repository: any updates

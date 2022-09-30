@@ -10,14 +10,13 @@ tap:
   - https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
   devNamespaces: 
     - dev-tap
-  ca_cert_data: |
-     YOUR_CERT
+  ca_cert_data:  #@ data.read("ca.crt")
   registry:
     host: harbor.tanzu-seal.io
     repositories:
-      buildService: tkg/tbs
+      buildService: tkg/tap/tbs
       ootbSupplyChain: tkg/ootb
-      testing: tkg/pipeline
+      testing: tkg/tap/pipeline
   artifactory:
      url: https://artifactory.YOUR DOMAIN/artifactory/example-repo-local
   domains:
