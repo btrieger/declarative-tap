@@ -1,4 +1,5 @@
 #@ load("@ytt:yaml", "yaml")
+#@ load("@ytt:data", "data")
 ---
 #@ def config():
 tap:
