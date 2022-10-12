@@ -374,7 +374,7 @@ spec:
   packageRef:
     refName: grype.scanning.apps.tanzu.vmware.com
     versionSelection:
-      constraints: "1.2.2"
+      constraints: "1.2.3"
       prereleases: {}
   serviceAccountName: tap-install-sa
   values:

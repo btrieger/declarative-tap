@@ -10,7 +10,7 @@ tap:
       username: INSERT-ARTIFACTORY-USERNAME
       password: INSERT-ARTIFACTORY-PASSWORD
     javatrust:
-      password: INSERT-TRUSTSTORE-PASSWORD
+      password: RANDOM-TRUSTSTORE-PASSWORD
     registry:
       username: INSERT-REGISTRY-USERNAME
       password: INSERT-REGISTRY-PASSWORD

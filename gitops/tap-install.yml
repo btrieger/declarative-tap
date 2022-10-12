@@ -11,7 +11,7 @@ spec:
   serviceAccountName: tap-install-gitops-sa
   fetch:
   - git:
-      url: https://gitlab.tanzu-seal.io/tap/declarative
+      url: https://gitlab.tanzu-seal.io/tap/declarative-tap
       ref: origin/main
   template:
   - ytt:
@@ -41,7 +41,7 @@ spec:
   serviceAccountName: tap-install-gitops-sa
   fetch:
   - git:
-      url: https://gitlab.tanzu-seal.io/tap/declarative
+      url: https://gitlab.tanzu-seal.io/tap/declarative-tap
       ref: origin/main
   template:
   - ytt:
