@@ -56,6 +56,7 @@ secrets:
 imagePullSecrets:
   - name: registry-credentials
   - name: tap-registry
+#@ if data.values.tap.version.startswith("1.2."):
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -118,6 +119,35 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: default
+---
+#@ else:
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default-permit-deliverable
+  namespace: #@ namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: deliverable
+subjects:
+  - kind: ServiceAccount
+    name: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default-permit-workload
+  namespace: #@ namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: workload
+subjects:
+  - kind: ServiceAccount
+    name: default
+#@ end
 ---
 #!
 #! Give the user full access to their namespace

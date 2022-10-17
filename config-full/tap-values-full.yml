@@ -129,10 +129,14 @@ metadata_store:
   app_service_type: ClusterIP
   ingress_enabled: "true"
 
-
+#@ if data.values.tap.version.startswith("1.2."):
+excluded_packages:
+  - grype.scanning.apps.tanzu.vmware.com
+#@ else:
 excluded_packages:
   - grype.scanning.apps.tanzu.vmware.com
   - policy.apps.tanzu.vmware.com
+#@ end
 
 accelerator:
   tls:
