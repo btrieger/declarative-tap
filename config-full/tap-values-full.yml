@@ -17,6 +17,7 @@ buildservice:
 #! valid options are 'basic', 'testing', and 'testing_scanning'
 supply_chain: testing_scanning
 ootb_supply_chain_basic:
+  git_implementation: libgit2
   registry:
     server: #@ data.values.tap.registry.host
     repository: #@ data.values.tap.registry.repositories.ootbSupplyChain
@@ -24,6 +25,7 @@ ootb_supply_chain_basic:
     ssh_secret: ""
 
 ootb_supply_chain_testing:
+  git_implementation: libgit2
   registry:
     server: #@ data.values.tap.registry.host
     repository: #@ data.values.tap.registry.repositories.ootbSupplyChain
@@ -36,6 +38,7 @@ ootb_supply_chain_testing:
       ca_cert_secret_name: #@ data.values.tap.maven.ca_cert_secret_name
 
 ootb_supply_chain_testing_scanning:
+  git_implementation: libgit2
   registry:
     server: #@ data.values.tap.registry.host
     repository: #@ data.values.tap.registry.repositories.ootbSupplyChain
@@ -46,7 +49,6 @@ ootb_supply_chain_testing_scanning:
       url: #@ data.values.tap.maven.url
       credentials_secret_name: #@ data.values.tap.maven.credentials_secret_name
       ca_cert_secret_name: #@ data.values.tap.maven.ca_cert_secret_name
-
 learningcenter:
   ingressDomain: #@ data.values.tap.domains.learningCenter
 appliveview:
@@ -130,6 +132,7 @@ metadata_store:
 
 excluded_packages:
   - grype.scanning.apps.tanzu.vmware.com
+  - policy.apps.tanzu.vmware.com
 
 accelerator:
   tls:
