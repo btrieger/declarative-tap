@@ -4,29 +4,29 @@
 #@ def config():
 tap:
   #! Set Backstage catalogs to include by default.
-  version: "1.2.2"
+  version: "1.3.0"
   tbs:
     version: "1.7.0"
   catalogs:
-  - https://gitlab.tanzu-seal.io/tap/tanzu-java-web-app/-/blob/main/catalog/catalog-info.yaml
+  - https://gitlab.$DOMAIN_NAME/tap/tanzu-java-web-app/-/blob/main/catalog/catalog-info.yaml
   devNamespaces: 
     - dev-tap
   ca_cert_data:  #@ data.read("ca.crt")
   registry:
-    host: harbor.YOUR DOMAIN
+    host: harbor.$DOMAIN_NAME
     repositories:
       buildService: tkg/tap/tbs
       ootbSupplyChain: tkg/ootb
       testing: tkg/tap/pipeline
   artifactory:
-     url: https://artifactory.YOUR DOMAIN/artifactory/example-repo-local
+     url: https://artifactory.$DOMAIN_NAME/artifactory/example-repo-local
   domains:
-    gitlab: gitlab.YOUR DOMAIN
-    main: tap.YOUR DOMAIN
-    learningCenter: learningcenter.tap.YOUR DOMAIN
-    knative: apps.tap.YOUR DOMAIN
+    gitlab: gitlab.$DOMAIN_NAME
+    main: tap.$DOMAIN_NAME
+    learningCenter: learningcenter.tap.$DOMAIN_NAME
+    knative: apps.tap.$DOMAIN_NAME
   grype:
-    dbUrl: https://YOUR S3 BUCKET URL/grype/listing.json
+    dbUrl: https://$BUCKET_URL/grype/listing.json
 #@ end
 ---
 apiVersion: v1

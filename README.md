@@ -37,6 +37,9 @@ to every cluster. These tools are part of the TAP prerequisites.
 
 1. Create new file `tap-install-config.yml` in `gitops`, reusing content from [`tap-install-config.yml.tpl`](gitops/tap-install-config.yml.tpl).
 Edit this file accordingly:
+    * Change all $DOMAIN_NAME entries to the domain name of your lab instance
+    * Change all $BUCKET_URL entries to the full bucket url used by your lab instance
+
 1. Do the same with [`tap-install-secrets.yml.tpl`](gitops/tap-install-secrets.yml.tpl)
 by creating `tap-install-secrets.yml`:
     - NOTE: This file is in the `.gitignore`. You'll want to make sure it's not committed (for the obvious reasons)
@@ -54,7 +57,7 @@ by creating `tap-install-secrets.yml`:
 You are now ready to apply the GitOps configuration. To do so change the path to your ca.crt:
 
 ```shell
-kapp deploy --wait-check-interval 15s -a tap-install-gitops -f <(ytt -f gitops -f /path/to/ca.rt)
+kapp deploy --wait-check-interval 15s -a tap-install-gitops -f <(ytt -f gitops -f /path/to/ca.crt)
 ```
 
 At this point, kapp-controller will monitor the Git repository: any updates
@@ -73,9 +76,7 @@ kctrl package installed list -n tap-install
 Enjoy!
 
 ## Post Deployment
-If you want to view image scan results in tap-gui, you need to update tap-values-secrets.yml and provide the service account read only token and ca.crt from app-tls-secret both of which are located in the metadata-store namespace. See the value `metadata_svc_account_token` and `metadata_ca_cert` in [tap-install-secrets.yml.tpl](gitops/tap-install-secrets.yml.tpl) for where do to this.
-
-Now you can deploy the sample workload in additional/workloads after updating the gitlab url.
+Now you can deploy the sample workload in additional/workloads after updating the gitlab url. 
 ## Contribute
 
 Contributions are always welcome!
